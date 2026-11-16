@@ -46,6 +46,32 @@ The application writes three JSON files to `--output` (default: `output/`):
 | `recommendations.json` | Goal 3 | Top 2 cheapest pharmacy chains per drug (`ndc`) by average unit price |
 | `quantities.json` | Goal 4 | Top 5 most frequently prescribed quantities per drug (`ndc`) |
 
+## Dataset Analysis & Results
+
+Running the pipeline against the supplied `data.tar` archive (~4.4 MB across 32 files) yields the following breakdown:
+
+### Input & Data Quality Summary
+
+| Category | Metric | Count | Notes |
+| --- | --- | --- | --- |
+| **Pharmacies** | Valid pharmacies | 17 | 1 CSV file across 3 chains (`saint`, `health`, `doctor`) |
+| **Claims** | Total rows read | 27,076 | Across 27 JSON files |
+| | Invalid / malformed rows | 3 | Missing `quantity` (2 rows) or `quantity = 0` (1 row); skipped |
+| | Unknown pharmacy (`npi`) | 4,085 | Valid rows from NPIs outside the 17-pharmacy dataset; excluded |
+| | In-scope fills | 22,988 | Valid claims matched to known pharmacies |
+| **Reverts** | Total rows read | 308 | Across 4 JSON files |
+| | Duplicate revert IDs | 3 | Same `id` with differing timestamps; deduplicated (earliest retained) |
+| | Unique reverts | 305 | 260 matched to in-scope claims (`reverted`); 22,728 `active` claims |
+
+### Report Outputs (`output/`)
+
+- **`metrics.json`**: **170** `(npi, ndc)` groups totaling **22,988** fills and **260** reverts.
+  - Example row (`npi: "0123456789"`, `ndc: "00002323401"`): `fills: 151`, `reverted: 2`, `avg_price: 1.3`, `total_price: 8151.0`.
+- **`recommendations.json`**: **10** drugs (`ndc`), each with its top 2 cheapest chains by mean unit price.
+  - Example (`ndc: "00002323401"`): `saint` (`avg_price: 1.79`), `health` (`avg_price: 293.58`).
+- **`quantities.json`**: **10** drugs (`ndc`), each with its top 5 most frequently prescribed quantities.
+  - Example (`ndc: "00002323401"`): `[15.0, 8.5, 180.0, 10.0, 1.0]`.
+
 ## Code Structure (`hippo/`)
 
 The codebase is split into three small functional modules, with docstrings on every function:
