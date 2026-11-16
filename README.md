@@ -74,6 +74,8 @@ Running the pipeline against the supplied `data.tar` archive (~4.4 MB across 32 
 
 ## Code Structure (`hippo/`)
 
+![Hippo Pharmacy Claims Pipeline Architecture](assets/architecture.jpg)
+
 The codebase is split into three small functional modules, with docstrings on every function:
 
 1. **`hippo/parser.py` (Goal 1 — Reading & Validation)**
