@@ -91,3 +91,14 @@ The codebase is split into three small functional modules, with docstrings on ev
    * `discover_files(directories, extensions)`: Collects input files across one or more directories.
    * `load_events_parallel(paths, parser_fn, workers)`: Parses files in parallel across up to 10 CPU cores using `ProcessPoolExecutor` and deduplicates events by `id`.
    * `run(...)` & `main(...)`: Orchestrates the pipeline and writes the JSON reports.
+
+## Architecture Decisions & Trade-offs
+
+* **Parallel Ingestion on 10 Cores (`ProcessPoolExecutor`):**
+  For the supplied ~27,000-row sample, single-threaded parsing finishes in under a second, so multiprocessing is not strictly needed at sample scale. However, the specification targets a **10-core instance** and real-world pharmacy claim streams are orders of magnitude larger. Partitioning JSON parsing and `Decimal` validation across up to 10 worker processes prepares the ingestion stage for production-sized batches while keeping output deterministic (files are sorted before mapping and reduced in order).
+* **Simple Modular Separation:**
+  Keeping `parser.py`, `reconcile.py`, and `pipeline.py` separate isolates I/O, validation, and business metrics without introducing heavy abstractions—using plain Python lists, dicts, `Counter`, and type annotations so the pipeline stays easy to read, test, and maintain.
+* **Two-Phase Load Then Reconcile:**
+  Because revert events can arrive in different files or carry timestamps earlier than their corresponding claims, loading and deduplicating all events before building the `reversed_claim_ids` set avoids ordering bugs. For datasets that exceed single-machine memory, this would naturally evolve into hash-partitioning events by `claim_id` and maintaining incremental `(count, unit_price_sum, total_price)` accumulators.
+* **Exact Decimal Arithmetic & String Identifiers:**
+  Raw JSON values contain floating-point noise (e.g., `64368.00000000001`), so prices and quantities are parsed as `Decimal` and rounded (`ROUND_HALF_UP`) only when writing JSON. `npi` and `ndc` remain strings to preserve leading zeroes.
