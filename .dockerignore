@@ -1,0 +1,6 @@
+data/
+output/
+data.tar
+.git/
+__pycache__/
+tests/
