@@ -96,8 +96,8 @@ The codebase is split into three small functional modules, with docstrings on ev
 
 * **Parallel Ingestion on 10 Cores (`ProcessPoolExecutor`):**
   For the supplied ~27,000-row sample, single-threaded parsing finishes in under a second, so multiprocessing is not strictly needed at sample scale. However, the specification targets a **10-core instance** and real-world pharmacy claim streams are orders of magnitude larger. Partitioning JSON parsing and `Decimal` validation across up to 10 worker processes prepares the ingestion stage for production-sized batches while keeping output deterministic (files are sorted before mapping and reduced in order).
-* **Simple Modular Separation:**
-  Keeping `parser.py`, `reconcile.py`, and `pipeline.py` separate isolates I/O, validation, and business metrics without introducing heavy abstractions—using plain Python lists, dicts, `Counter`, and type annotations so the pipeline stays easy to read, test, and maintain.
+* **Functional Programming & Simple Modular Separation:**
+  A batch data pipeline is naturally a chain of transformations (`parse -> filter -> reconcile -> aggregate`). Implementing `parser.py`, `reconcile.py`, and `pipeline.py` with pure, stateless functions operating on plain Python dicts, lists, and `Counter`s avoids hidden mutable state and side effects. This makes every stage deterministic (same input always produces the exact same output), trivial to test in isolation, and inherently safe to parallelize across worker processes.
 * **Two-Phase Load Then Reconcile:**
   Because revert events can arrive in different files or carry timestamps earlier than their corresponding claims, loading and deduplicating all events before building the `reversed_claim_ids` set avoids ordering bugs. For datasets that exceed single-machine memory, this would naturally evolve into hash-partitioning events by `claim_id` and maintaining incremental `(count, unit_price_sum, total_price)` accumulators.
 * **Exact Decimal Arithmetic & String Identifiers:**
